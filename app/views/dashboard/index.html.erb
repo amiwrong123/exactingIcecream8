@@ -1,0 +1,121 @@
+
+<!-- Fly-Dispatch-Start: %= request.headers['Fly-Dispatch-Start'] %> -->
+<section class="container mx-auto px-4 sm:px-6 lg:px-8">
+  <h1 class="font-heading text-navy text-3xl mb-6">
+    Current Request
+  </h1>
+  <div data-controller="timings">
+  <%
+    regions = %w{ ord lax ams scl syd nrt }
+    regions = ["local", "pretend"] if Rails.env == "development"
+
+    r = request.headers['Fly-Region']
+    r = 'ord' if r == 'chi'
+    r = 'ewr' if r == 'lga'
+  %>
+    <div class="flex justify-between items-center flex-wrap bg-white shadow-lg overflow-hidden rounded-2xl relative px-2 pb-2">
+      <nav class="hidden sm:flex space-x-2 text-sm font-bold tracking-wide relative pl-3" aria-label="Tabs">
+      <% regions.each do |r| %>
+      <%
+        style = "text-navy transition-colors whitespace-nowrap rounded-lg px-2 py-1 hover:bg-violet-100 hover:text-violet-600"
+        if r == FlyGlobal.current_region
+          style = "bg-navy text-white pointer-events-none whitespace-nowrap rounded-lg px-2 py-1" 
+        end
+      %>
+      <a 
+        href="/regions/<%= r %>" 
+        class="<%= style %>" 
+        data-turbolinks="false"
+      >
+        <%= r.upcase %>
+      </a>
+      <% end %>
+    </nav>
+    <%= form_for TimingResult.new  do |f| %>
+      <%= f.hidden_field :vm_region, value: ENV['FLY_REGION'] || 'local' %>
+      <%= f.hidden_field :method, value: request.method %>
+      <%= f.hidden_field :url, value: request.fullpath %>
+      <%= f.hidden_field :request_start_at, value: request_start_at %>
+      <%= f.hidden_field :request_dispatch_at, value: request_dispatch_at %>
+      <%= f.hidden_field :is_replay, value: ENV['FLY_REGION'] != r %>
+      <input type="hidden" name="timing_result[browser_timings]" data-timings-target="timingInput">
+      <button type="submit" type="submit" class="inline-flex items-center px-4 py-2 mx-2 mt-2 mb-5 relative top-1 rounded-lg sm font-medium text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-violet-600">
+        Record Results
+      </button>
+      <% if flash.notice.present? %>
+      <div class="absolute bg-navy text-white text-sm px-2 py-2 mt-0 top--1 rounded-lg">
+        <p class="py-2">
+        <%= flash.notice %>
+        </p>
+        <p class="py-2">
+        Latest in DB: #<%= TimingResult.last.id%>
+        </p>
+      </div>
+      <% end %>
+    <% end %>
+    <dl class="font-medium w-full">
+      <div class="bg-gray-50 rounded-lg px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+        <dt>
+          Connection&nbsp;Region
+        </dt>
+        <dd class="flex items-center mt-1 sm:mt-0 sm:col-span-2 text-navy font-bold ">
+          <img src="https://fly.io/ui/images/<%= r || 'ord' %>.svg" style="width:20px;" class= "mr-2 rounded-full"/>
+          <%= r || '?' %>
+        </dd>
+      </div>
+      <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+        <dt>
+          Rails&nbsp;Region
+        </dt>
+        <dd class="flex items-center mt-1 sm:mt-0 sm:col-span-2 text-navy font-bold">
+          <img src="https://fly.io/ui/images/<%= ENV['FLY_REGION'] || 'scl' %>.svg" style="width:20px;" class= "mr-2 rounded-full"/>
+
+          <%= ENV['FLY_REGION'] || '?' %>
+        </dd>
+      </div>
+      <div class="bg-gray-50 rounded-lg px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+        <dt>
+          Response Time
+        </dt>
+        <dd 
+          data-timings-target="responseEnd"
+          class="mt-1 sm:mt-0 sm:col-span-2 text-navy font-bold"
+        >
+        </dd>
+      </div>
+      <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+        <dt>
+          Replay Time
+        </dt>
+        <dd class="mt-1 sm:mt-0 sm:col-span-2 text-navy font-bold">
+          <% if ENV['FLY_REGION'] != r || Rails.env == "development" %>
+            <%= replay_overhead %>ms
+          <% else %>
+            -
+          <% end %>
+        </dd>
+      </div>
+      <div class="bg-gray-50 rounded-lg px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+        <dt>
+          TLS Time
+        </dt>
+        <dd
+          data-timings-target="secureConnectionStart"
+          class="mt-1 sm:mt-0 sm:col-span-2 text-navy font-bold"
+        >
+        </dd>
+      </div>
+      <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+        <dt>
+          Browser
+        </dt>
+        <dd class="mt-1 sm:mt-0 sm:col-span-2 text-navy font-bold">
+        <%= browser_description %>
+        </dd>
+      </div>
+      </div>
+    </dl>
+  </div>
+</section>
+
+<%= render partial: "dashboard/timing_results" %>
